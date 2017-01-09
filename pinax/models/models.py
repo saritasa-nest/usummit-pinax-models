@@ -25,7 +25,9 @@ class LogicalDeleteModel(models.Model):
         to_delete = get_related_objects(self)
 
         for obj in to_delete:
-            obj.delete()
+            # check that model is not inherited to avoid circular deletion
+            if not issubclass(obj.__class__, self.__class__):
+                obj.delete()
 
         # Soft delete the object
         self.date_removed = timezone.now()
