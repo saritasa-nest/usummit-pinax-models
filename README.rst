@@ -81,7 +81,8 @@ Using the app is pretty simple:
 Additional
 ----------
 
-Logical deletes are handled by date stamping a `date_removed` column.
+Logical deletes are handled by date stamping a column. Default name of this column
+is ``date_removed``, but it can be changed using ``LOGICAL_DELETE_FIELD`` setting
 
 
 Backwards Incompatible Changes
