@@ -3,19 +3,21 @@ from django.utils import timezone
 
 from . import managers
 from .utils import get_related_objects
+from . import settings as app_settings
 
 
 class LogicalDeleteModel(models.Model):
     """
     This base model provides date fields and functionality to enable logical
     delete functionality in derived models.
+
+    Field itself declared in the bottom of file
     """
-    date_removed = models.DateTimeField(null=True, blank=True)
 
     objects = managers.LogicalDeletedManager()
 
     def active(self):
-        return self.date_removed is None
+        return getattr(self, app_settings.FIELD_NAME) is None
     active.boolean = True
 
     def delete(self):
@@ -28,8 +30,15 @@ class LogicalDeleteModel(models.Model):
                 obj.delete()
 
         # Soft delete the object
-        self.date_removed = timezone.now()
+        setattr(self, app_settings.FIELD_NAME, timezone.now())
         self.save()
 
     class Meta:
         abstract = True
+
+
+# add field with deletion datetime to model with configurable name
+LogicalDeleteModel.add_to_class(
+    app_settings.FIELD_NAME,
+    models.DateTimeField(null=True, blank=True)
+)
