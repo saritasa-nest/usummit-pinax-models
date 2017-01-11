@@ -40,9 +40,15 @@ class LogicalDeletedManager(models.Manager):
             return self.queryset_class(self.model, using=self._db).deleted()
 
     def get(self, *args, **kwargs):
-        return self.all_with_deleted().get(*args, **kwargs)
+        if app_settings.ACCESSIBLE_BY_PK:
+            queryset = self.all_with_deleted()
+        else:
+            queryset = self.get_queryset()
+        return queryset.get(*args, **kwargs)
 
     def filter(self, *args, **kwargs):
-        if "pk" in kwargs:
-            return self.all_with_deleted().filter(*args, **kwargs)
-        return self.get_queryset().filter(*args, **kwargs)
+        if "pk" in kwargs and app_settings.ACCESSIBLE_BY_PK:
+            queryset = self.all_with_deleted()
+        else:
+            queryset = self.get_queryset()
+        return queryset.filter(*args, **kwargs)

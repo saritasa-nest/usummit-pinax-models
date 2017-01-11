@@ -82,7 +82,16 @@ Additional
 ----------
 
 Logical deletes are handled by date stamping a column. Default name of this column
-is ``date_removed``, but it can be changed using ``LOGICAL_DELETE_FIELD`` setting
+is ``date_removed``, but it can be changed using ``LOGICAL_DELETE_FIELD`` setting.
+
+
+Settings
+--------
+
+* ``LOGICAL_DELETE_FIELD`` - name of field with deletion datetime. Default: ``"date_removed"``
+
+* ``ACCESSIBLE_BY_PK`` - is deleted objects may be retrived using ``Model.objects.get(**kwargs))``
+  and specifying ``pk`` in ``Model.objects.filter``
 
 
 Backwards Incompatible Changes
