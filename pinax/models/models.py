@@ -40,5 +40,5 @@ class LogicalDeleteModel(models.Model):
 # add field with deletion datetime to model with configurable name
 LogicalDeleteModel.add_to_class(
     app_settings.FIELD_NAME,
-    models.DateTimeField(null=True, blank=True)
+    models.DateTimeField(null=True, blank=True, editable=False)
 )
