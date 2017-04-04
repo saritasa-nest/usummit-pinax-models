@@ -21,10 +21,11 @@ class LogicalDeleteModel(models.Model):
         return getattr(self, app_settings.FIELD_NAME) is None
     active.boolean = True
 
-    def delete(self, _collect_related=True):
+    def delete(self, hard_delete=False, _collect_related=True):
         """Soft-delete the object.
 
         Args:
+            hard_delete(bool): force hard object deletion
             _collect_related(bool): is deletion of this object requires to
                 collect and delete some related objects.
 
@@ -32,6 +33,9 @@ class LogicalDeleteModel(models.Model):
         should collect related objects. If related objects will also start to
         collect realted objects we may fail into endless recursion
         """
+        if hard_delete:
+            return super().delete()
+
         # Fetch related models
         if _collect_related:
             to_delete = get_related_objects(self)

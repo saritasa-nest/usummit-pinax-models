@@ -16,7 +16,14 @@ class LogicalDeleteQuerySet(QuerySet):
         """Custom filter for retrieving not deleted objects only"""
         return self.filter(**{self.filter_key: True})
 
-    def delete(self):
+    def delete(self, hard_delete=False):
+        """Delete objects in queryset.
+
+        Args:
+            hard_delete(bool): force hard object deletion
+        """
+        if hard_delete:
+            return super().delete()
         msg = 'Cannot use "limit" or "offset" with delete.'
         assert self.query.can_filter(), msg
         for obj in self.all():
