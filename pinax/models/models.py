@@ -44,7 +44,9 @@ class LogicalDeleteModel(models.Model):
 
         for obj in to_delete:
             if isinstance(obj, LogicalDeleteModel):
-                obj.delete(_collect_related=False)
+                # check if object is already deleted
+                if not getattr(obj, app_settings.FIELD_NAME):
+                    obj.delete(_collect_related=False)
             else:
                 obj.delete()
 
