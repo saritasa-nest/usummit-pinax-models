@@ -1,10 +1,11 @@
+from django.core.exceptions import NON_FIELD_ERRORS
 from django.db import models
 from django.utils import timezone
-from django.core.exceptions import NON_FIELD_ERRORS
 
-from . import managers
-from .utils import get_related_objects
 from . import settings as app_settings
+from . import managers
+from .signals import post_softdelete, pre_softdelete
+from .utils import get_related_objects
 
 
 class LogicalDeleteModel(models.Model):
@@ -51,8 +52,10 @@ class LogicalDeleteModel(models.Model):
                 obj.delete()
 
         # Soft delete the object
+        pre_softdelete.send(sender=self.__class__, instance=self)
         setattr(self, app_settings.FIELD_NAME, timezone.now())
         self.save()
+        post_softdelete.send(sender=self.__class__, instance=self)
 
     class Meta:
         abstract = True
