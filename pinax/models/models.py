@@ -37,6 +37,9 @@ class LogicalDeleteModel(models.Model):
         if hard_delete:
             return super().delete()
 
+        # Call pre_delete signals
+        pre_softdelete.send(sender=self.__class__, instance=self)
+
         # Fetch related models
         if _collect_related:
             to_delete = get_related_objects(self)
@@ -52,7 +55,6 @@ class LogicalDeleteModel(models.Model):
                 obj.delete()
 
         # Soft delete the object
-        pre_softdelete.send(sender=self.__class__, instance=self)
         setattr(self, app_settings.FIELD_NAME, timezone.now())
         self.save()
         post_softdelete.send(sender=self.__class__, instance=self)
