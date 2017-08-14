@@ -1,9 +1,10 @@
 from django.core.exceptions import NON_FIELD_ERRORS
-from django.db import models
+from django.db import models, router
 from django.utils import timezone
 
-from . import settings as app_settings
 from . import managers
+from . import settings as app_settings
+from .deletion import LogicalDeleteCollector
 from .signals import post_softdelete, pre_softdelete
 from .utils import get_related_objects
 
@@ -35,7 +36,7 @@ class LogicalDeleteModel(models.Model):
         collect realted objects we may fail into endless recursion
         """
         if hard_delete:
-            return super().delete()
+            return self.hard_delete()
 
         # Call pre_delete signals
         pre_softdelete.send(sender=self.__class__, instance=self)
@@ -58,6 +59,24 @@ class LogicalDeleteModel(models.Model):
         setattr(self, app_settings.FIELD_NAME, timezone.now())
         self.save()
         post_softdelete.send(sender=self.__class__, instance=self)
+
+    def hard_delete(self, using=None, keep_parents=False):
+        """Method to hard delete object.
+
+        This is the original `delete()` method from ``Model`` class, but
+        with using of ``LogicalDeleteCollector`` instead of ``Collector``.
+
+        """
+        using = using or router.db_for_write(self.__class__, instance=self)
+        assert self._get_pk_val() is not None, (
+            "%s object can't be deleted because its %s attribute is set"
+            " to None." %
+            (self._meta.object_name, self._meta.pk.attname)
+        )
+
+        collector = LogicalDeleteCollector(using=using)
+        collector.collect([self], keep_parents=keep_parents)
+        return collector.delete()
 
     class Meta:
         abstract = True
