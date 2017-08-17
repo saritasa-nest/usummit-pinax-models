@@ -5,6 +5,7 @@ import itertools
 from django.contrib.admin.utils import quote
 from django.contrib.auth import get_permission_codename
 from django.db import DEFAULT_DB_ALIAS
+from django.db.models.deletion import ProtectedError
 from django.urls import NoReverseMatch, reverse
 from django.utils.encoding import force_text
 from django.utils.html import format_html
@@ -19,11 +20,21 @@ def get_related_objects(obj, using=DEFAULT_DB_ALIAS):
     This code is based on https://github.com/makinacorpus/django-safedelete
 
     Method uses ``LogicalDeleteNestedObjects`` instead of ``NestedObjects``
-    class, that originally is used in `pinax-models`.
+    class, that originally is used in `pinax-models`. Also it forbids to delete
+    object if it has protected related objects.
 
     """
     collector = LogicalDeleteNestedObjects(using=using)
     collector.collect([obj])
+
+    if collector.protected:
+        raise ProtectedError(
+            (
+                'Cannot delete object "{obj}" as it has protected relations.'
+                .format(obj=obj)
+            ),
+            list(collector.protected)
+        )
 
     def flatten(elem):
         if isinstance(elem, list):
