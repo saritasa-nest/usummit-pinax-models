@@ -67,16 +67,7 @@ class LogicalDeleteModel(models.Model):
         with using of ``LogicalDeleteCollector`` instead of ``Collector``.
 
         """
-        using = using or router.db_for_write(self.__class__, instance=self)
-        assert self._get_pk_val() is not None, (
-            "%s object can't be deleted because its %s attribute is set"
-            " to None." %
-            (self._meta.object_name, self._meta.pk.attname)
-        )
-
-        collector = LogicalDeleteCollector(using=using)
-        collector.collect([self], keep_parents=keep_parents)
-        return collector.delete()
+        super().delete()
 
     class Meta:
         abstract = True
