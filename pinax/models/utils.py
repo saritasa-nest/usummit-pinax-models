@@ -14,18 +14,41 @@ from django.utils.text import capfirst
 from .deletion import LogicalDeleteNestedObjects
 
 
-def get_related_objects(obj, using=DEFAULT_DB_ALIAS):
+def get_collector(obj, using=DEFAULT_DB_ALIAS, collect=True):
+    """Method to get collector with already collected or not related objects.
+
+    Method uses ``LogicalDeleteNestedObjects`` instead of ``NestedObjects``
+    class, that originally is used in `pinax-models`.
+
+    It just makes initialization of a new collector and collects its related
+    objects or not depending on `collect` flag.
+
+    Attributes:
+          obj (Model): object which related instances should be collected
+          using (str): currently used DB alias
+          collect (bool): flag if related objects should be collected
+
+    Returns:
+          (LogicalDeleteNestedObjects): collector instance with already
+          collected objects
+
+    """
+    collector = LogicalDeleteNestedObjects(using=using)
+    if collect:
+        collector.collect([obj])
+    return collector
+
+
+def get_related_objects(obj, using=DEFAULT_DB_ALIAS, collector=None):
     """Method to get related objects.
 
     This code is based on https://github.com/makinacorpus/django-safedelete
 
-    Method uses ``LogicalDeleteNestedObjects`` instead of ``NestedObjects``
-    class, that originally is used in `pinax-models`. Also it forbids to delete
-    object if it has protected related objects.
+    It forbids to delete object if it has protected related objects.
 
     """
-    collector = LogicalDeleteNestedObjects(using=using)
-    collector.collect([obj])
+    if not collector:
+        collector = get_collector(obj, using)
 
     if collector.protected:
         raise ProtectedError(

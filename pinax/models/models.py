@@ -4,9 +4,8 @@ from django.utils import timezone
 
 from . import managers
 from . import settings as app_settings
-from .deletion import LogicalDeleteCollector
 from .signals import post_softdelete, pre_softdelete
-from .utils import get_related_objects
+from .utils import get_related_objects, get_collector
 
 
 class LogicalDeleteModel(models.Model):
@@ -43,8 +42,10 @@ class LogicalDeleteModel(models.Model):
 
         # Fetch related models
         if _collect_related:
-            to_delete = get_related_objects(self)
+            collector = get_collector(self)
+            to_delete = get_related_objects(self, collector=collector)
         else:
+            collector = None
             to_delete = []
 
         for obj in to_delete:
@@ -58,6 +59,18 @@ class LogicalDeleteModel(models.Model):
         # Soft delete the object
         setattr(self, app_settings.FIELD_NAME, timezone.now())
         self.save()
+
+        # Update related object fields (SET_NULL)
+        if _collect_related and collector:
+            for model, to_update in collector.field_updates.items():
+                for (field, value), instances in to_update.items():
+                    query = models.sql.UpdateQuery(model)
+                    query.update_batch(
+                        [obj.pk for obj in instances],
+                        {field.name: value},
+                        collector.using
+                    )
+
         post_softdelete.send(sender=self.__class__, instance=self)
 
     def hard_delete(self, using=None, keep_parents=False):
