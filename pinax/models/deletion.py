@@ -1,6 +1,9 @@
+import operator
 from collections import defaultdict
+from functools import reduce
 
 from django.db import models
+from django.db.models import query_utils
 from django.db.models.deletion import Collector
 
 
@@ -15,14 +18,18 @@ class LogicalDeleteCollector(Collector):
 
     """
 
-    def related_objects(self, related, objs):
+    def related_objects(self, related_model, related_fields, objs):
         """Custom `related_objects` method.
 
         This method uses `_default_manager` instead of `_base_manager`.
 
         """
-        return related.related_model._default_manager.using(self.using).filter(
-            **{"%s__in" % related.field.name: objs}
+        predicate = reduce(operator.or_, (
+            query_utils.Q(**{'%s__in' % related_field.name: objs})
+            for related_field in related_fields
+        ))
+        return related_model._default_manager.using(self.using).filter(
+            predicate
         )
 
 
@@ -59,9 +66,9 @@ class LogicalDeleteNestedObjects(LogicalDeleteCollector):
         except models.ProtectedError as e:
             self.protected.update(e.protected_objects)
 
-    def related_objects(self, related, objs):
-        qs = super().related_objects(related, objs)
-        return qs.select_related(related.field.name)
+    def related_objects(self, related_model, related_fields, objs):
+        qs = super().related_objects(related_model, related_fields, objs)
+        return qs.select_related(*(f.name for f in related_fields))
 
     def _nested(self, obj, seen, format_callback):
         if obj in seen:
