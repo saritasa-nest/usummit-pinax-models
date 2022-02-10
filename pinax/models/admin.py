@@ -9,9 +9,9 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import router
 from django.forms.formsets import DELETION_FIELD_NAME
 from django.forms.models import modelform_defines_fields, inlineformset_factory
-from django.utils.encoding import force_text
+from django.utils.encoding import force_str
 from django.utils.text import get_text_list
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from .utils import get_logical_deleted_objects
 from .deletion import LogicalDeleteNestedObjects
@@ -83,7 +83,7 @@ class LogicalDeleteViewMixin(object):
         if request.POST and not protected:
             if perms_needed:
                 raise PermissionDenied
-            obj_display = force_text(obj)
+            obj_display = force_str(obj)
             attr = str(to_field) if to_field else opts.pk.attname
             obj_id = obj.serializable_value(attr)
             self.log_deletion(request, obj, obj_display)
@@ -91,7 +91,7 @@ class LogicalDeleteViewMixin(object):
 
             return self.response_delete(request, obj_display, obj_id)
 
-        object_name = force_text(opts.verbose_name)
+        object_name = force_str(opts.verbose_name)
 
         if perms_needed or protected:
             title = _("Cannot delete %(name)s") % {"name": object_name}

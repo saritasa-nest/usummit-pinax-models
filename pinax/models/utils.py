@@ -7,7 +7,7 @@ from django.contrib.auth import get_permission_codename
 from django.db import DEFAULT_DB_ALIAS
 from django.db.models.deletion import ProtectedError
 from django.urls import NoReverseMatch, reverse
-from django.utils.encoding import force_text
+from django.utils.encoding import force_str
 from django.utils.html import format_html
 from django.utils.text import capfirst
 
@@ -86,7 +86,7 @@ def get_logical_deleted_objects(objs, opts, user, admin_site, using):
         opts = obj._meta
 
         no_edit_link = '%s: %s' % (capfirst(opts.verbose_name),
-                                   force_text(obj))
+                                   force_str(obj))
 
         if has_admin:
             try:
