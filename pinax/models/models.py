@@ -1,11 +1,14 @@
+from functools import reduce
+from operator import or_
+
 from django.core.exceptions import NON_FIELD_ERRORS
-from django.db import models, router
+from django.db import models
 from django.utils import timezone
 
 from . import managers
 from . import settings as app_settings
 from .signals import post_softdelete, pre_softdelete
-from .utils import get_related_objects, get_collector
+from .utils import get_collector, get_related_objects
 
 
 class LogicalDeleteModel(models.Model):
@@ -62,8 +65,22 @@ class LogicalDeleteModel(models.Model):
 
         # Update related object fields (SET_NULL)
         if _collect_related and collector:
-            for model, to_update in collector.field_updates.items():
-                for (field, value), instances in to_update.items():
+            for (field, value), instances_list in collector.field_updates.items():
+                updates = []
+                objs = []
+                for instances in instances_list:
+                    if (
+                        isinstance(instances, models.QuerySet)
+                        and instances._result_cache is None
+                    ):
+                        updates.append(instances)
+                    else:
+                        objs.extend(instances)
+                if updates:
+                    combined_updates = reduce(or_, updates)
+                    combined_updates.update(**{field.name: value})
+                if objs:
+                    model = objs[0].__class__
                     query = models.sql.UpdateQuery(model)
                     query.update_batch(
                         [obj.pk for obj in instances],
