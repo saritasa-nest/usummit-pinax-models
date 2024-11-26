@@ -6,6 +6,7 @@ from django.contrib.admin.utils import quote
 from django.contrib.auth import get_permission_codename
 from django.db import DEFAULT_DB_ALIAS
 from django.db.models.deletion import ProtectedError
+from django.db import router
 from django.urls import NoReverseMatch, reverse
 from django.utils.encoding import force_str
 from django.utils.html import format_html
@@ -69,7 +70,7 @@ def get_related_objects(obj, using=DEFAULT_DB_ALIAS, collector=None):
     return flatten(collector.nested())
 
 
-def get_logical_deleted_objects(objs, opts, user, admin_site, using):
+def get_logical_deleted_objects(objs, request, admin_site):
     """Custom `get_deleted_objects` function.
 
     This is the original `get_deleted_objects` function that uses custom
@@ -77,37 +78,43 @@ def get_logical_deleted_objects(objs, opts, user, admin_site, using):
     ``NestedObjects`` class.
 
     """
+    try:
+        obj = objs[0]
+    except IndexError:
+        return [], {}, set(), []
+    else:
+        using = router.db_for_write(obj._meta.model)
+
     collector = LogicalDeleteNestedObjects(using=using)
     collector.collect(objs)
     perms_needed = set()
 
     def format_callback(obj):
-        has_admin = obj.__class__ in admin_site._registry
+        model = obj.__class__
         opts = obj._meta
 
-        no_edit_link = '%s: %s' % (capfirst(opts.verbose_name),
-                                   force_str(obj))
+        no_edit_link = "%s: %s" % (capfirst(opts.verbose_name), obj)
 
-        if has_admin:
+        if admin_site.is_registered(model):
+            if not admin_site.get_model_admin(model).has_delete_permission(
+                request, obj
+            ):
+                perms_needed.add(opts.verbose_name)
             try:
-                admin_url = reverse('%s:%s_%s_change'
-                                    % (admin_site.name,
-                                       opts.app_label,
-                                       opts.model_name),
-                                    None, (quote(obj._get_pk_val()),))
+                admin_url = reverse(
+                    "%s:%s_%s_change"
+                    % (admin_site.name, opts.app_label, opts.model_name),
+                    None,
+                    (quote(obj.pk),),
+                )
             except NoReverseMatch:
                 # Change url doesn't exist -- don't display link to edit
                 return no_edit_link
 
-            p = '%s.%s' % (opts.app_label,
-                           get_permission_codename('delete', opts))
-            if not user.has_perm(p):
-                perms_needed.add(opts.verbose_name)
             # Display a link to the admin page.
-            return format_html('{}: <a href="{}">{}</a>',
-                               capfirst(opts.verbose_name),
-                               admin_url,
-                               obj)
+            return format_html(
+                '{}: <a href="{}">{}</a>', capfirst(opts.verbose_name), admin_url, obj
+            )
         else:
             # Don't display link to edit, because it either has no
             # admin or is edited inline.
