@@ -1,3 +1,3 @@
-import pkg_resources
+from importlib.metadata import distribution
 
-__version__ = pkg_resources.get_distribution("pinax-models").version
+__version__ = distribution("pinax-models").version
