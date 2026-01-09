@@ -25,7 +25,13 @@ class LogicalDeleteModel(models.Model):
         return getattr(self, app_settings.FIELD_NAME) is None
     active.boolean = True
 
-    def delete(self, hard_delete=False, _collect_related=True):
+    def delete(
+        self,
+        *args,
+        hard_delete=False,
+        _collect_related=True,
+        **kwargs,
+    ):
         """Soft-delete the object.
 
         Args:
@@ -38,7 +44,7 @@ class LogicalDeleteModel(models.Model):
         collect realted objects we may fail into endless recursion
         """
         if hard_delete:
-            return self.hard_delete()
+            return self.hard_delete(*args, **kwargs)
 
         # Call pre_delete signals
         pre_softdelete.send(sender=self.__class__, instance=self)
@@ -55,9 +61,9 @@ class LogicalDeleteModel(models.Model):
             if isinstance(obj, LogicalDeleteModel):
                 # check if object is already deleted
                 if not getattr(obj, app_settings.FIELD_NAME):
-                    obj.delete(_collect_related=False)
+                    obj.delete(_collect_related=False, *args, **kwargs)
             else:
-                obj.delete()
+                obj.delete(*args, **kwargs)
 
         # Soft delete the object
         setattr(self, app_settings.FIELD_NAME, timezone.now())
